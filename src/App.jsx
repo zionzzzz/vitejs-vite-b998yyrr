@@ -8995,35 +8995,33 @@ function InputCell({ label, value, onChange }) {
     </div>
   );
 }
-
-// 🛒 完整餐別版：加入「早餐、午餐、下午茶、晚餐、宵夜、小食、飲料」選擇列
+// 🛒 完整餐別版：支援完美排版的購物車與筆記
 function AddEntryModal({
   onClose,
   onAdd,
   favoriteMeals = [],
   onToggleFavorite = () => {},
 }) {
-  // 🌟 新增餐別清單，並預設為午餐
   const MEAL_TYPES = ['早餐', '午餐', '下午茶', '晚餐', '宵夜', '小食', '飲料'];
   const [mealType, setMealType] = useState('午餐');
+
+  // 心情與筆記狀態
   const [mealMood, setMealMood] = useState('😊');
   const [mealNote, setMealNote] = useState('');
   const MOOD_OPTIONS = ['🤩', '😊', '😐', '😫', '🤢'];
+
   const [activeCategory, setActiveCategory] = useState('常用');
   const [cart, setCart] = useState([]);
-  // 🌟 新增：目前選擇的常用資料夾
   const [currentFavFolder, setCurrentFavFolder] = useState('未分類');
   const [sortBy, setSortBy] = useState('default');
-  // 🌟 新增：搜尋關鍵字的狀態
   const [searchQuery, setSearchQuery] = useState('');
-  // 🌟 新增：自動從 favoriteMeals 中萃取出所有出現過的資料夾名稱
+
   const favFolders = useMemo(() => {
     return Array.from(
       new Set(['未分類', ...favoriteMeals.map((f) => f.folder || '未分類')])
     );
   }, [favoriteMeals]);
 
-  // 🌟 確保如果某個分類空了被自動刪除時，畫面能安全回到「未分類」
   useEffect(() => {
     if (!favFolders.includes(currentFavFolder)) setCurrentFavFolder('未分類');
   }, [favFolders, currentFavFolder]);
@@ -9114,12 +9112,9 @@ function AddEntryModal({
   const handleSaveToFavorites = () => {
     if (!manualName.trim() || !manualNutrients.calories)
       return alert('請輸入名稱與熱量再收藏！');
-
     if (isManualInFav) {
-      // 如果已經在常用裡，再次點擊就是移除
       onToggleFavorite({ name: manualName });
     } else {
-      // 🌟 跳出視窗詢問要存到哪個分類
       const folderName = window.prompt(
         '⭐ 請輸入此私房餐點的分類名稱 (直接按確定為「未分類」)：',
         currentFavFolder
@@ -9130,7 +9125,6 @@ function AddEntryModal({
         const divisor = isWeightOrVolume
           ? Number(manualAmount) / 100
           : Number(manualAmount) || 1;
-
         onToggleFavorite(
           {
             name: manualName,
@@ -9138,40 +9132,29 @@ function AddEntryModal({
             defaultAmount: Number(manualAmount),
             unit: manualUnit,
             calories: Math.round(Number(manualNutrients.calories) / divisor),
-            protein: Number(
-              (Number(manualNutrients.protein) / divisor).toFixed(1)
-            ),
+            protein: Number((Number(manualNutrients.protein) / divisor).toFixed(1)),
             carbs: Number((Number(manualNutrients.carbs) / divisor).toFixed(1)),
             fat: Number((Number(manualNutrients.fat) / divisor).toFixed(1)),
           },
           finalFolder
         );
-
-        // 自動切換到剛建立的資料夾
         setCurrentFavFolder(finalFolder);
       }
     }
   };
 
-  // 🌟 升級版：支援分類、全域搜尋與智慧排序
   const filteredFoods = useMemo(() => {
     let result = [];
-
-    // 1. 🔍 如果有輸入關鍵字，啟動「全域搜尋模式」！忽略分類，直接從所有食物中找
     if (searchQuery.trim() !== '') {
       const lowerQuery = searchQuery.toLowerCase();
-
-      // 將「常用」與「總資料庫」合併，並去除重複名稱的食物
       const combined = [...favoriteMeals, ...FOOD_DATABASE];
       const uniqueCombined = Array.from(
         new Map(combined.map((item) => [item.name, item])).values()
       );
-
       result = uniqueCombined.filter((f) =>
         f.name.toLowerCase().includes(lowerQuery)
       );
     } else {
-      // 2. 📂 沒有搜尋時，走原本的「一般分類」邏輯
       if (activeCategory === '常用') {
         result = (favoriteMeals || []).filter(
           (f) => (f.folder || '未分類') === currentFavFolder
@@ -9185,45 +9168,29 @@ function AddEntryModal({
       }
     }
 
-    // 3. ⚖️ 依照選擇的條件進行「排序」
     if (sortBy !== 'default') {
       result = [...result].sort((a, b) => {
-        if (sortBy === 'protein-desc')
-          return (Number(b.protein) || 0) - (Number(a.protein) || 0);
-        if (sortBy === 'calories-asc')
-          return (Number(a.calories) || 0) - (Number(b.calories) || 0);
-        if (sortBy === 'calories-desc')
-          return (Number(b.calories) || 0) - (Number(a.calories) || 0);
-        if (sortBy === 'carbs-asc')
-          return (Number(a.carbs) || 0) - (Number(b.carbs) || 0);
-        if (sortBy === 'fat-asc')
-          return (Number(a.fat) || 0) - (Number(b.fat) || 0);
+        if (sortBy === 'protein-desc') return (Number(b.protein) || 0) - (Number(a.protein) || 0);
+        if (sortBy === 'calories-asc') return (Number(a.calories) || 0) - (Number(b.calories) || 0);
+        if (sortBy === 'calories-desc') return (Number(b.calories) || 0) - (Number(a.calories) || 0);
+        if (sortBy === 'carbs-asc') return (Number(a.carbs) || 0) - (Number(b.carbs) || 0);
+        if (sortBy === 'fat-asc') return (Number(a.fat) || 0) - (Number(b.fat) || 0);
         return 0;
       });
     }
-
     return result;
   }, [activeCategory, favoriteMeals, currentFavFolder, sortBy, searchQuery]);
-  const totalCartCalories = cart.reduce(
-    (s, i) => s + Number(i.computed.calories || 0),
-    0
-  );
-  const totalCartProtein = cart
-    .reduce((s, i) => s + Number(i.computed.protein || 0), 0)
-    .toFixed(1);
-  const totalCartCarbs = cart
-    .reduce((s, i) => s + Number(i.computed.carbs || 0), 0)
-    .toFixed(1);
-  const totalCartFat = cart
-    .reduce((s, i) => s + Number(i.computed.fat || 0), 0)
-    .toFixed(1);
-  console.log('🚀 App 成功發動啦！'); // 👈 加入這行！
+
+  const totalCartCalories = cart.reduce((s, i) => s + Number(i.computed.calories || 0), 0);
+  const totalCartProtein = cart.reduce((s, i) => s + Number(i.computed.protein || 0), 0).toFixed(1);
+  const totalCartCarbs = cart.reduce((s, i) => s + Number(i.computed.carbs || 0), 0).toFixed(1);
+  const totalCartFat = cart.reduce((s, i) => s + Number(i.computed.fat || 0), 0).toFixed(1);
+
   return (
     <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-t-[3rem] p-8 shadow-2xl max-h-[95vh] flex flex-col border-t border-slate-100 dark:border-slate-800">
       <div className="flex justify-between items-center mb-4 flex-shrink-0">
         <h2 className="text-2xl font-black tracking-tight">
-          紀錄餐點{' '}
-          <span className="text-sm text-slate-400 ml-2">({cart.length})</span>
+          紀錄餐點 <span className="text-sm text-slate-400 ml-2">({cart.length})</span>
         </h2>
         <button
           onClick={onClose}
@@ -9232,8 +9199,11 @@ function AddEntryModal({
           <X size={18} />
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto no-scrollbar space-y-8 pb-4">
-        {/* 🌟 核心更新：餐別選擇區 */}
+
+      {/* 🌟 核心排版修復：這裡面的東西都可以自由滾動，絕對不會被擋住 */}
+      <div className="flex-1 overflow-y-auto no-scrollbar space-y-6 pb-6">
+        
+        {/* 1. 餐別選擇 */}
         <div className="space-y-3">
           <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">
             選擇餐別
@@ -9255,12 +9225,112 @@ function AddEntryModal({
           </div>
         </div>
 
-        {/* 手動輸入區 */}
+        {/* 🌟 2. 購物車與筆記移到這裡！保證一加入就看得到，且不擋住下方資料庫 */}
+        {cart.length > 0 && (
+          <div className="space-y-4 animate-in zoom-in-95 duration-300">
+            {/* 紫色購物車預覽 */}
+            <div className="bg-indigo-600 text-white rounded-[2.5rem] p-6 space-y-4 shadow-xl shadow-indigo-200 dark:shadow-none">
+              <div className="flex justify-between items-center">
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-70">
+                  本次紀錄清單 ({mealType})
+                </p>
+                <button
+                  onClick={() => setCart([])}
+                  className="text-[10px] font-black opacity-70 hover:opacity-100 underline transition-opacity"
+                >
+                  清空
+                </button>
+              </div>
+
+              <div className="space-y-3 max-h-40 overflow-y-auto no-scrollbar">
+                {cart.map((item) => (
+                  <div key={item.cartId} className="flex items-center justify-between gap-2 bg-white/10 p-3 rounded-2xl">
+                    <span className="text-xs font-bold truncate flex-1" title={item.name}>
+                      {item.name}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center bg-white/20 rounded-lg px-2 py-1">
+                        <input
+                          type="number"
+                          value={item.amount}
+                          onChange={(e) => updateCartItemAmount(item.cartId, e.target.value)}
+                          className="w-12 bg-transparent text-center text-xs font-black outline-none text-white placeholder:text-white/50"
+                        />
+                        <span className="text-[9px] font-black opacity-70">{item.unit}</span>
+                      </div>
+                      <span className="text-xs font-black w-14 text-right">
+                        {item.computed.calories || 0} kcal
+                      </span>
+                      <button
+                        onClick={() => setCart(cart.filter((i) => i.cartId !== item.cartId))}
+                        className="p-1 ml-1 text-white/50 hover:text-white transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-4 border-t border-white/20">
+                <div className="flex justify-between items-end mb-3">
+                  <span className="text-xs uppercase font-black">總計熱量</span>
+                  <span className="text-2xl font-black leading-none">
+                    {totalCartCalories} <span className="text-sm">kcal</span>
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 bg-white/10 rounded-2xl p-3 text-center">
+                  <div className="space-y-1">
+                    <p className="text-[9px] uppercase font-bold text-indigo-200 tracking-wider">蛋白質</p>
+                    <p className="text-sm font-black">{totalCartProtein}g</p>
+                  </div>
+                  <div className="space-y-1 border-x border-white/10">
+                    <p className="text-[9px] uppercase font-bold text-indigo-200 tracking-wider">碳水</p>
+                    <p className="text-sm font-black">{totalCartCarbs}g</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[9px] uppercase font-bold text-indigo-200 tracking-wider">脂肪</p>
+                    <p className="text-sm font-black">{totalCartFat}g</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 隨手筆記與心情 UI */}
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl border border-slate-100 dark:border-slate-700/50">
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3 flex items-center gap-1.5">
+                <span className="text-sm">📝</span> 隨手筆記與心情
+              </p>
+              <div className="flex justify-between mb-3 px-2">
+                {MOOD_OPTIONS.map(m => (
+                  <button
+                    key={m}
+                    onClick={() => setMealMood(m)}
+                    className={`text-2xl transition-transform ${
+                      mealMood === m 
+                        ? 'scale-125 drop-shadow-md' 
+                        : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                value={mealNote}
+                onChange={(e) => setMealNote(e.target.value)}
+                placeholder="這餐吃得如何？有什麼想記錄的嗎？(選填)"
+                className="w-full bg-white dark:bg-slate-900 p-3 rounded-2xl text-xs font-bold outline-none border border-slate-100 dark:border-slate-700 focus:border-indigo-400 transition-colors resize-none h-16 placeholder:text-slate-300"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* 3. 手動輸入區 */}
         <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 space-y-4">
           <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">
             手動記錄私房餐點
           </p>
-
           <div className="flex gap-2">
             <div className="flex-1 relative">
               <input
@@ -9300,54 +9370,17 @@ function AddEntryModal({
                   <option value="隻">隻</option>
                 </select>
                 <div className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
-                  <svg
-                    width="10"
-                    height="10"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
                 </div>
               </div>
             </div>
           </div>
-
           <div className="grid grid-cols-2 gap-2">
-            <InputCell
-              label="熱量"
-              value={manualNutrients.calories}
-              onChange={(v) =>
-                setManualNutrients({ ...manualNutrients, calories: v })
-              }
-            />
-            <InputCell
-              label="蛋白"
-              value={manualNutrients.protein}
-              onChange={(v) =>
-                setManualNutrients({ ...manualNutrients, protein: v })
-              }
-            />
-            <InputCell
-              label="碳水"
-              value={manualNutrients.carbs}
-              onChange={(v) =>
-                setManualNutrients({ ...manualNutrients, carbs: v })
-              }
-            />
-            <InputCell
-              label="脂肪"
-              value={manualNutrients.fat}
-              onChange={(v) =>
-                setManualNutrients({ ...manualNutrients, fat: v })
-              }
-            />
+            <InputCell label="熱量" value={manualNutrients.calories} onChange={(v) => setManualNutrients({ ...manualNutrients, calories: v })} />
+            <InputCell label="蛋白" value={manualNutrients.protein} onChange={(v) => setManualNutrients({ ...manualNutrients, protein: v })} />
+            <InputCell label="碳水" value={manualNutrients.carbs} onChange={(v) => setManualNutrients({ ...manualNutrients, carbs: v })} />
+            <InputCell label="脂肪" value={manualNutrients.fat} onChange={(v) => setManualNutrients({ ...manualNutrients, fat: v })} />
           </div>
-
           <div className="flex gap-2 pt-2">
             <button
               onClick={handleAddManualToCart}
@@ -9363,23 +9396,17 @@ function AddEntryModal({
                   : 'bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-500 hover:border-amber-300 hover:text-amber-500'
               }`}
             >
-              <CheckCircle2
-                size={14}
-                fill={isManualInFav ? 'currentColor' : 'none'}
-              />
+              <CheckCircle2 size={14} fill={isManualInFav ? 'currentColor' : 'none'} />
               {isManualInFav ? '已加入常用' : '加入常用'}
             </button>
           </div>
         </div>
 
-        {/* 資料庫選取區 */}
+        {/* 4. 資料庫選取區 */}
         <div className="space-y-4">
-          {/* 🌟 核心新功能：全域智慧搜尋列 */}
           <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-              <span className="text-lg opacity-40 group-focus-within:opacity-100 transition-opacity">
-                🔍
-              </span>
+              <span className="text-lg opacity-40 group-focus-within:opacity-100 transition-opacity">🔍</span>
             </div>
             <input
               type="text"
@@ -9389,26 +9416,16 @@ function AddEntryModal({
               className="w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400"
             />
             {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-300 hover:text-rose-400 transition-colors"
-                title="清除搜尋"
-              >
+              <button onClick={() => setSearchQuery('')} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-300 hover:text-rose-400 transition-colors">
                 <X size={16} />
               </button>
             )}
           </div>
-          {/* 🌟 升級版標題區：加入排序選單 */}
           <div className="flex justify-between items-end mb-2 border-b border-slate-100 dark:border-slate-800/50 pb-2">
             <div className="space-y-1 text-left">
-              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                快速選取資料庫
-              </p>
-              <p className="text-[9px] font-bold text-indigo-400">
-                💡 點擊右上角圈圈可加入/移除常用
-              </p>
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">快速選取資料庫</p>
+              <p className="text-[9px] font-bold text-indigo-400">💡 點擊右上角圈圈可加入/移除常用</p>
             </div>
-
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
@@ -9422,15 +9439,11 @@ function AddEntryModal({
               <option value="fat-asc">🥑 脂肪 (低至高)</option>
             </select>
           </div>
-
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
             {categoriesWithFav.map((c) => (
               <button
                 key={c}
-                onClick={() => {
-                  setActiveCategory(c); // 1. 切換分類
-                  setSortBy('default'); // 2. 🌟 同時強制把排序重置回預設值！
-                }}
+                onClick={() => { setActiveCategory(c); setSortBy('default'); }}
                 className={`px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all ${
                   activeCategory === c
                     ? 'bg-indigo-600 text-white shadow-md'
@@ -9441,8 +9454,6 @@ function AddEntryModal({
               </button>
             ))}
           </div>
-
-          {/* 🌟 核心新功能：常用專屬的「子分類資料夾」 */}
           {activeCategory === '常用' && (
             <div className="flex items-center gap-2 mb-3 mt-1 overflow-x-auto no-scrollbar pb-1">
               {favFolders.map((folder) => (
@@ -9460,317 +9471,75 @@ function AddEntryModal({
               ))}
             </div>
           )}
-
           <div className="grid grid-cols-2 gap-2">
-            {filteredFoods.map(
-              (
-                food // 👈 必須是 filteredFoods，才會經過大腦過濾
-              ) => (
-                <div key={food.name} className="relative group">
-                  <button
-                    onClick={() => handleAddDbToCart(food)}
-                    className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl text-[11px] font-bold text-left flex flex-col gap-1 active:scale-95 hover:border-indigo-300 transition-all"
-                  >
-                    <span className="truncate pr-4 text-slate-700 dark:text-slate-200">
-                      {food.name}
+            {filteredFoods.map((food) => (
+              <div key={food.name} className="relative group">
+                <button
+                  onClick={() => handleAddDbToCart(food)}
+                  className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl text-[11px] font-bold text-left flex flex-col gap-1 active:scale-95 hover:border-indigo-300 transition-all"
+                >
+                  <span className="truncate pr-4 text-slate-700 dark:text-slate-200">{food.name}</span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[9px] text-indigo-500 font-black">
+                      {food.calories} kcal / {food.unit === 'g' || food.unit === 'ml' ? '100' : '1'}{food.unit}
                     </span>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-[9px] text-indigo-500 font-black">
-                        {food.calories} kcal /{' '}
-                        {food.unit === 'g' || food.unit === 'ml' ? '100' : '1'}
-                        {food.unit}
+                    {food.approx && (
+                      <span className="text-[8px] bg-slate-100 dark:bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded font-bold tracking-wider">
+                        💡 {food.approx}
                       </span>
-                      {food.approx && (
-                        <span className="text-[8px] bg-slate-100 dark:bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded font-bold tracking-wider">
-                          💡 {food.approx}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-
-                  {/* 🌟 核心新功能：移動分類按鈕 (僅在已收藏的餐點顯示) */}
-                  {favoriteMeals.some((f) => f.name === food.name) && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const currentFolder =
-                          favoriteMeals.find((f) => f.name === food.name)
-                            ?.folder || '未分類';
-                        const folderName = window.prompt(
-                          `📦 將「${food.name}」移動到：\n(輸入現有分類或建立新分類)`,
-                          currentFolder
-                        );
-
-                        if (folderName !== null) {
-                          const finalFolder = folderName.trim() || '未分類';
-                          onToggleFavorite(food, finalFolder, true); // 傳入 true 代表「只是移動」
-
-                          // 如果正在看「常用」頁籤，移動後畫面自動跟著跳過去
-                          if (activeCategory === '常用')
-                            setCurrentFavFolder(finalFolder);
-                        }
-                      }}
-                      className="absolute top-2 right-8 p-1 text-slate-300 hover:text-indigo-500 transition-colors opacity-100 sm:opacity-0 group-hover:opacity-100"
-                      title="移動至其他分類"
-                    >
-                      <Edit3 size={14} />
-                    </button>
-                  )}
-
-                  {/* 星星收藏按鈕 */}
+                    )}
+                  </div>
+                </button>
+                {favoriteMeals.some((f) => f.name === food.name) && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      const isFav = favoriteMeals.some(
-                        (f) => f.name === food.name
-                      );
-                      if (isFav) {
-                        onToggleFavorite(food); // 移除
-                      } else {
-                        const folderName = window.prompt(
-                          `⭐ 將「${food.name}」加入常用\n請輸入分類名稱 (直接按確定為「未分類」)：`,
-                          currentFavFolder
-                        );
-                        if (folderName !== null) {
-                          const finalFolder = folderName.trim() || '未分類';
-                          onToggleFavorite(food, finalFolder);
-                          setCurrentFavFolder(finalFolder);
-                        }
+                      const currentFolder = favoriteMeals.find((f) => f.name === food.name)?.folder || '未分類';
+                      const folderName = window.prompt(`📦 將「${food.name}」移動到：\n(輸入現有分類或建立新分類)`, currentFolder);
+                      if (folderName !== null) {
+                        const finalFolder = folderName.trim() || '未分類';
+                        onToggleFavorite(food, finalFolder, true);
+                        if (activeCategory === '常用') setCurrentFavFolder(finalFolder);
                       }
                     }}
-                    className={`absolute top-2 right-2 p-1 ${
-                      favoriteMeals.some((f) => f.name === food.name)
-                        ? 'text-amber-400'
-                        : 'text-slate-200 hover:text-amber-200'
-                    }`}
+                    className="absolute top-2 right-8 p-1 text-slate-300 hover:text-indigo-500 transition-colors opacity-100 sm:opacity-0 group-hover:opacity-100"
+                    title="移動至其他分類"
                   >
-                    <CheckCircle2 size={14} fill="currentColor" />
+                    <Edit3 size={14} />
                   </button>
-                </div>
-              )
-            )}
-          </div>
-        </div>
-
-        {/* 購物車預覽 */}
-        {cart.length > 0 && (
-          <div className="bg-indigo-600 text-white rounded-[2.5rem] p-6 space-y-4 shadow-xl shadow-indigo-200 dark:shadow-none animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <div className="flex justify-between items-center">
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">
-                本次紀錄清單 ({mealType})
-              </p>
-              <button
-                onClick={() => setCart([])}
-                className="text-[10px] font-black opacity-70 hover:opacity-100 underline transition-opacity"
-              >
-                清空
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {cart.map((item) => (
-                <div
-                  key={item.cartId}
-                  className="flex items-center justify-between gap-2 bg-white/10 p-3 rounded-2xl"
-                >
-                  <span
-                    className="text-xs font-bold truncate flex-1"
-                    title={item.name}
-                  >
-                    {item.name}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center bg-white/20 rounded-lg px-2 py-1">
-                      <input
-                        type="number"
-                        value={item.amount}
-                        onChange={(e) =>
-                          updateCartItemAmount(item.cartId, e.target.value)
-                        }
-                        className="w-12 bg-transparent text-center text-xs font-black outline-none text-white placeholder:text-white/50"
-                      />
-                      <span className="text-[9px] font-black opacity-70">
-                        {item.unit}
-                      </span>
-                    </div>
-                    <span className="text-xs font-black w-14 text-right">
-                      {item.computed.calories || 0} kcal
-                    </span>
-                    <button
-                      onClick={() =>
-                        setCart(cart.filter((i) => i.cartId !== item.cartId))
-                      }
-                      className="p-1 ml-1 text-white/50 hover:text-white transition-colors"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-4 border-t border-white/20">
-              <div className="flex justify-between items-end mb-3">
-                <span className="text-xs uppercase font-black">總計熱量</span>
-                <span className="text-2xl font-black leading-none">
-                  {totalCartCalories} <span className="text-sm">kcal</span>
-                </span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 bg-white/10 rounded-2xl p-3 text-center">
-                <div className="space-y-1">
-                  <p className="text-[9px] uppercase font-bold text-indigo-200 tracking-wider">
-                    蛋白質
-                  </p>
-                  <p className="text-sm font-black">{totalCartProtein}g</p>
-                </div>
-                <div className="space-y-1 border-x border-white/10">
-                  <p className="text-[9px] uppercase font-bold text-indigo-200 tracking-wider">
-                    碳水
-                  </p>
-                  <p className="text-sm font-black">{totalCartCarbs}g</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[9px] uppercase font-bold text-indigo-200 tracking-wider">
-                    脂肪
-                  </p>
-                  <p className="text-sm font-black">{totalCartFat}g</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-      <div className="pt-4 flex-shrink-0">
-        {/* 購物車預覽 (這是原本紫色的購物清單，幫您加回來了！) */}
-        {cart.length > 0 && (
-          <div className="bg-indigo-600 text-white rounded-[2.5rem] p-6 space-y-4 shadow-xl shadow-indigo-200 dark:shadow-none animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <div className="flex justify-between items-center">
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">
-                本次紀錄清單 ({mealType})
-              </p>
-              <button
-                onClick={() => setCart([])}
-                className="text-[10px] font-black opacity-70 hover:opacity-100 underline transition-opacity"
-              >
-                清空
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {cart.map((item) => (
-                <div
-                  key={item.cartId}
-                  className="flex items-center justify-between gap-2 bg-white/10 p-3 rounded-2xl"
-                >
-                  <span
-                    className="text-xs font-bold truncate flex-1"
-                    title={item.name}
-                  >
-                    {item.name}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center bg-white/20 rounded-lg px-2 py-1">
-                      <input
-                        type="number"
-                        value={item.amount}
-                        onChange={(e) =>
-                          updateCartItemAmount(item.cartId, e.target.value)
-                        }
-                        className="w-12 bg-transparent text-center text-xs font-black outline-none text-white placeholder:text-white/50"
-                      />
-                      <span className="text-[9px] font-black opacity-70">
-                        {item.unit}
-                      </span>
-                    </div>
-                    <span className="text-xs font-black w-14 text-right">
-                      {item.computed.calories || 0} kcal
-                    </span>
-
-                    {/* 👇 這就是消失的取消選擇按鈕！ */}
-                    <button
-                      onClick={() =>
-                        setCart(cart.filter((i) => i.cartId !== item.cartId))
-                      }
-                      className="p-1 ml-1 text-white/50 hover:text-white transition-colors"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-4 border-t border-white/20">
-              <div className="flex justify-between items-end mb-3">
-                <span className="text-xs uppercase font-black">總計熱量</span>
-                <span className="text-2xl font-black leading-none">
-                  {totalCartCalories} <span className="text-sm">kcal</span>
-                </span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 bg-white/10 rounded-2xl p-3 text-center">
-                <div className="space-y-1">
-                  <p className="text-[9px] uppercase font-bold text-indigo-200 tracking-wider">
-                    蛋白質
-                  </p>
-                  <p className="text-sm font-black">{totalCartProtein}g</p>
-                </div>
-                <div className="space-y-1 border-x border-white/10">
-                  <p className="text-[9px] uppercase font-bold text-indigo-200 tracking-wider">
-                    碳水
-                  </p>
-                  <p className="text-sm font-black">{totalCartCarbs}g</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[9px] uppercase font-bold text-indigo-200 tracking-wider">
-                    脂肪
-                  </p>
-                  <p className="text-sm font-black">{totalCartFat}g</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>{' '}
-      {/* 👈 注意！這是保持畫面可以滾動的關鍵結尾 */}
-      {/* 底部固定按鈕區 */}
-      <div className="pt-4 flex-shrink-0">
-        {/* 🌟 隨手筆記與心情 UI */}
-        {cart.length > 0 && (
-          <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl mb-4 border border-slate-100 dark:border-slate-700/50 animate-in fade-in slide-in-from-bottom-2">
-            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3 flex items-center gap-1.5">
-              <span className="text-sm">📝</span> 隨手筆記與心情
-            </p>
-            <div className="flex justify-between mb-3 px-2">
-              {MOOD_OPTIONS.map((m) => (
+                )}
                 <button
-                  key={m}
-                  onClick={() => setMealMood(m)}
-                  className={`text-2xl transition-transform ${
-                    mealMood === m
-                      ? 'scale-125 drop-shadow-md'
-                      : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const isFav = favoriteMeals.some((f) => f.name === food.name);
+                    if (isFav) {
+                      onToggleFavorite(food);
+                    } else {
+                      const folderName = window.prompt(`⭐ 將「${food.name}」加入常用\n請輸入分類名稱 (直接按確定為「未分類」)：`, currentFavFolder);
+                      if (folderName !== null) {
+                        const finalFolder = folderName.trim() || '未分類';
+                        onToggleFavorite(food, finalFolder);
+                        setCurrentFavFolder(finalFolder);
+                      }
+                    }
+                  }}
+                  className={`absolute top-2 right-2 p-1 ${
+                    favoriteMeals.some((f) => f.name === food.name) ? 'text-amber-400' : 'text-slate-200 hover:text-amber-200'
                   }`}
                 >
-                  {m}
+                  <CheckCircle2 size={14} fill="currentColor" />
                 </button>
-              ))}
-            </div>
-            <textarea
-              value={mealNote}
-              onChange={(e) => setMealNote(e.target.value)}
-              placeholder="這餐吃得如何？有什麼想記錄的嗎？(選填)"
-              className="w-full bg-white dark:bg-slate-900 p-3 rounded-2xl text-xs font-bold outline-none border border-slate-100 dark:border-slate-700 focus:border-indigo-400 transition-colors resize-none h-16 placeholder:text-slate-300"
-            />
+              </div>
+            ))}
           </div>
-        )}
+        </div>
+      </div>
 
-        {/* 🌟 確認送出按鈕 */}
+      {/* 🌟 底部固定區域：只保留薄薄的一顆按鈕，完全不佔用空間！ */}
+      <div className="pt-4 flex-shrink-0 bg-white dark:bg-slate-900 border-t border-slate-50 dark:border-slate-800">
         <button
           onClick={() => {
             if (cart.length === 0) return alert('清單是空的喔！');
-            // 將所有資訊包含心情筆記打包送出
             const preparedCart = cart.map((item) => ({
               ...item,
               calories: item.computed.calories,
@@ -9780,23 +9549,16 @@ function AddEntryModal({
               mealType,
               mood: mealMood,
               note: mealNote,
-              time: new Date().toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit',
-              }),
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             }));
             onAdd(preparedCart);
             onClose();
           }}
           className={`w-full py-5 rounded-[2.5rem] font-black shadow-xl active:scale-95 transition-all ${
-            cart.length > 0
-              ? 'bg-indigo-600 text-white'
-              : 'bg-slate-200 text-slate-400'
+            cart.length > 0 ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'
           }`}
         >
-          {cart.length > 0
-            ? `確認將這 ${cart.length} 項記為「${mealType}」`
-            : '請先選取或輸入餐點'}
+          {cart.length > 0 ? `確認將這 ${cart.length} 項記為「${mealType}」` : '請先選取或輸入餐點'}
         </button>
       </div>
     </div>
